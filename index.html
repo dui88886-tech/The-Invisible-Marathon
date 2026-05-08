@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nike: The Invisible Marathon - Video Background Edition</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Noto+Sans+HK:wght@300;400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --nike-orange: #ff6600;
+            --bg-dark: #050505;
+            --text-main: #ffffff;
+            --mx: 0px; 
+            --my: 0px;
+        }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background-color: #000;
+            font-family: 'Noto Sans HK', sans-serif; color: var(--text-main);
+            user-select: none; -webkit-user-select: none;
+        }
+
+        .noise {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; opacity: 0.08; z-index: 999;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        /* ✨ 升級版 Loading 樣式 ✨ */
+        #loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 1000;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            /* 退場時的電影級向上滑動與淡出 */
+            transition: transform 1s cubic-bezier(0.77, 0, 0.175, 1), opacity 0.8s ease;
+            will-change: transform, opacity;
+        }
+        #loader.hide {
+            transform: translateY(-100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loader-ring-wrapper {
+            position: relative; width: 90px; height: 90px; margin-bottom: 30px;
+        }
+        .loader-svg {
+            width: 100%; height: 100%; transform: rotate(-90deg);
+        }
+        .ring-bg {
+            fill: none; stroke: rgba(255, 255, 255, 0.1); stroke-width: 2px;
+        }
+        .ring-progress {
+            fill: none; stroke: var(--nike-orange); stroke-width: 3px;
+            stroke-dasharray: 283; /* 圓周長 2 * pi * r (45) ≈ 283 */
+            stroke-dashoffset: 283;
+            stroke-linecap: round;
+            filter: drop-shadow(0 0 6px rgba(255, 102, 0, 0.6));
+        }
+        .nike-swoosh-inner {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 45px; fill: #fff;
+        }
+
+        .loader-text-group { text-align: center; }
+        #progress-num { 
+            font-family: 'Oswald', sans-serif; font-size: 3.5rem; font-weight: 700; 
+            color: #fff; line-height: 1; letter-spacing: 2px; margin-bottom: 5px;
+        }
+        .loader-text { font-family: 'Oswald', sans-serif; font-size: 0.75rem; letter-spacing: 6px; color: var(--nike-orange); }
+
+        #slider-container {
+            width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            will-change: transform;
+        }
+
+        #slider-container.animate {
+            transition: transform 0.85s cubic-bezier(0.77, 0, 0.175, 1);
+        }
+
+        .page {
+            width: 100vw; height: 100vh; flex-shrink: 0;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            position: relative; text-align: center; overflow: hidden;
+            visibility: hidden; 
+        }
+
+        .page.active {
+            visibility: visible; 
+        }
+
+        .parallax-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0;
+            transform: translate(var(--mx), var(--my));
+            transition: transform 0.2s ease-out;
+        }
+
+        .video-bg {
+            position: absolute; top: 50%; left: 50%;
+            width: 100%; height: 100%;
+            transform: translate(-50%, -50%) scale(1.15); 
+            filter: brightness(0.25) grayscale(30%);
+            object-fit: cover; 
+            transition: transform 1.5s cubic-bezier(0.19, 1, 0.22, 1), filter 1.5s ease;
+        }
+
+        .page.active .video-bg {
+            transform: translate(-50%, -50%) scale(1.05);
+            filter: brightness(0.7) grayscale(0%);
+        }
+
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.85) 100%);
+            z-index: 1;
+        }
+
+        .content {
+            position: relative; z-index: 10;
+            max-width: 850px; padding: 0 40px;
+            transform: translateY(60px); opacity: 0;
+            transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.5s, opacity 1.2s ease 0.5s;
+        }
+        .page.active .content { transform: translateY(0); opacity: 1; }
+
+        h1 { font-family: 'Oswald', sans-serif; font-size: clamp(2.8rem, 6.5vw, 6.5rem); margin: 0; line-height: 1.1; text-transform: uppercase; letter-spacing: -2px; }
+        h2 { font-family: 'Oswald', sans-serif; font-size: 1rem; color: var(--nike-orange); letter-spacing: 4px; margin-bottom: 20px; text-transform: uppercase; }
+        p { font-size: 1.1rem; color: #ccc; margin-top: 20px; line-height: 1.8; font-weight: 300; }
+
+        .onboarding-ui { position: relative; z-index: 100; display: flex; flex-direction: column; align-items: center; }
+        .drag-track { position: relative; width: 40px; height: 156px; margin-bottom: 40px; }
+        .drag-line { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); width: 1px; height: 120px; border-left: 2px dotted rgba(255,255,255,0.2); }
+        .drag-target { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 36px; height: 36px; border: 2px dashed rgba(255,255,255,0.4); border-radius: 50%; }
+        
+        .draggable-circle {
+            position: absolute; top: 0; left: 50%; transform: translate(-50%, 0);
+            width: 36px; height: 36px; border: 2px solid #fff; border-radius: 50%;
+            background: rgba(255,255,255,0.1); backdrop-filter: blur(5px);
+            cursor: grab; z-index: 110; 
+            transition: none; 
+        }
+
+        #page-index {
+            position: fixed; bottom: 30px; right: 30px; z-index: 900;
+            font-family: 'Oswald', sans-serif; font-size: 0.8rem; letter-spacing: 2px;
+            opacity: 0; transition: opacity 0.5s; color: rgba(255,255,255,0.5);
+        }
+        body.story-mode #page-index { opacity: 1; }
+
+        #p-final .parallax-layer { display: none; }
+        #p-final { background-color: var(--nike-orange); }
+        #p-final h1, #p-final p, #p-final h2 { color: #000; }
+        .cta-btn {
+            margin-top: 30px; padding: 15px 45px; background: #000; color: #fff;
+            border: none; border-radius: 40px; font-family: 'Oswald', sans-serif;
+            font-size: 1rem; letter-spacing: 2px; cursor: pointer; transition: 0.3s;
+        }
+
+        #falling-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 500; opacity: 0; pointer-events: none;
+            transition: opacity 0.4s ease; display: flex; justify-content: center; align-items: center; overflow: hidden;
+        }
+        #falling-overlay.active { opacity: 1; }
+        .speed-lines {
+            width: 100%; height: 200%;
+            background: repeating-linear-gradient(0deg, transparent, transparent 10%, rgba(255, 102, 0, 0.15) 10.5%, rgba(255, 255, 255, 0.1) 11%, transparent 11.5%);
+            background-size: 100% 150px; animation: fall-speed 0.3s linear infinite;
+        }
+        @keyframes fall-speed { 0% { transform: translateY(0); } 100% { transform: translateY(-150px); } }
+    </style>
+</head>
+<body>
+
+    <div class="noise"></div>
+
+    <div id="falling-overlay">
+        <div class="speed-lines"></div>
+    </div>
+
+    <div id="loader">
+        <div class="loader-ring-wrapper">
+            <svg class="loader-svg" viewBox="0 0 100 100">
+                <circle class="ring-bg" cx="50" cy="50" r="45"></circle>
+                <circle class="ring-progress" cx="50" cy="50" r="45"></circle>
+            </svg>
+            <svg class="nike-swoosh-inner" viewBox="0 0 24 24"><path d="M21.573 5.378c-.286-.346-.714-.543-1.164-.543-.16 0-.323.025-.483.076l-15.608 5.056c-.703.228-1.241.76-1.464 1.454-.222.694-.054 1.446.459 2.01l3.353 3.691c.294.323.712.508 1.15.508.136 0 .273-.018.406-.056l14.327-4.102c.725-.208 1.291-.741 1.542-1.455.25-.714.152-1.503-.27-2.139z"/></svg>
+        </div>
+        <div class="loader-text-group">
+            <div id="progress-num">0%</div>
+            <div class="loader-text">CALIBRATING PACE</div>
+        </div>
+    </div>
+
+    <div id="page-index">01 / 10</div>
+
+    <div id="slider-container" class="animate">
+        
+        <div class="page active" id="p-onboard">
+            <div class="onboarding-ui">
+                <div class="drag-track">
+                    <div class="drag-line"></div>
+                    <div class="drag-target"></div>
+                    <div class="draggable-circle" id="onboard-circle"></div>
+                </div>
+                <div class="onboarding-instruction" style="font-size:0.7rem; letter-spacing:2px;">DRAG DOWN TO ENTER</div>
+            </div>
+        </div>
+
+        <div class="page page-story" id="p1">
+            <div class="parallax-layer">
+                <video class="video-bg" autoplay loop muted playsinline>
+                    <source src="scene1.mp4" type="video/mp4">
+                </video>
+            </div>
+            <div class="overlay"></div>
+            <div class="content">
+                <h2>The Start</h2>
+                <h1>The Invisible Marathon.</h1>
+                <p>最大的挑戰不在賽道上，而在你起床後的那一秒。向下拖曳，拉出下一幕。</p>
+            </div>
+        </div>
+
+        <div class="page page-story" id="p2">
+            <div class="parallax-layer">
+                <video class="video-bg" autoplay loop muted playsinline>
+                    <source src="scene2.mp4" type="video/mp4">
+                </video>
+            </div>
+            <div class="overlay"></div>
+            <div class="content">
+                <h2>The Distraction</h2>
+                <h1>Infinite Scrolling.</h1>
+                <p>深夜的螢幕藍光，是你與自己之間的第一道障礙。我們習慣於滑動別人的精彩，卻忘記了自己的節奏。</p>
+            </div>
+        </div>
+
+        <div class="page page-story" id="p3">
+            <div class="parallax-layer">
+                <video class="video-bg" autoplay loop muted playsinline>
+                    <source src="scene3.mp4" type="video/mp4">
+                </video>
+            </div>
+            <div class="overlay"></div>
+            <div class="content">
+                <h2>The Prison</h2>
+                <h1>The 9 to 9 Grind.</h1>
+                <p>你在工位上瘋狂奔跑，心跳加速，卻感覺自己哪裡也沒有去。身體被困在桌子前，靈魂在呼救。</p>
+            </div>
+        </div>
+
+        <div class="page page-story" id="p4">
+            <div class="parallax-layer">
+                <video class="video-bg" autoplay loop muted playsinline>
+                    <source src="scene4.mp4" type="video/mp4">
+                </video>
+            </div>
+            <div class="overlay"></div>
+            <div class="content">
+                <h2>The Opponent</h2>
+                <h1>The Man in Mirror.</h1>
+                <p>你看到的不是疲憊，而是猶豫。你最大的對手，始終是那個想讓你留在家裡的自己。</p>
+            </div>
+        </div>
+
+        <div class="page page-story" id="p5">
+            <div class="parallax-layer">
+                <video class="video-bg" autoplay loop muted playsinline>
+                    <source src="scene5.mp4" type="video/mp4">
+                </video>
+            </div>
+            <div class="overlay"></div>
+            <div class="content">
+                <h2>The Moment</h2>
+                <h1>Just One Breath.</h1>
+                <p>關掉所有噪音。聽聽你的呼吸。在這一刻，你開始重新拿回控制權。</p>
+            </div>
+        </div>
+
+        <div class="page page-story" id="p6">
+            <div class="parallax-layer">
+                <video class="video-bg" autoplay loop muted playsinline>
+                    <source src="scene6.mp4" type="video/mp4">
+                </video>
+            </div>
+            <div class="overlay"></div>
+            <div class="content">
+                <h2>The Decision</h2>
+                <h1>Lace Up.</h1>
+                <p>系好鞋帶。這不僅是一個動作，而是一個契約。一旦穿上它，你就不再回頭。</p>
+            </div>
+        </div>
+
+        <div class="page page-story" id="p7">
+            <div class="parallax-layer">
+                <video class="video-bg" autoplay loop muted playsinline>
+                    <source src="scene7.mp4" type="video/mp4">
+                </video>
+            </div>
+            <div class="overlay"></div>
+            <div class="content">
+                <h2>The Step</h2>
+                <h1>The Hardest Inch.</h1>
+                <p>推開門。最難的不是十公里，而是邁出家門口的那一公分。現在，你動了。</p>
+            </div>
+        </div>
+
+        <div class="page page-story" id="p8">
+            <div class="parallax-layer">
+                <video class="video-bg" autoplay loop muted playsinline>
+                    <source src="scene8.mp4" type="video/mp4">
+                </video>
+            </div>
+            <div class="overlay"></div>
+            <div class="content">
+                <h2>The Flow</h2>
+                <h1>Lose Yourself.</h1>
+                <p>當腳步聲變成唯一的頻率，煩惱就被甩在了身後。在運動中，你找回了自由。</p>
+            </div>
+        </div>
+
+        <div class="page page-story" id="p9">
+            <div class="parallax-layer">
+                <video class="video-bg" autoplay loop muted playsinline>
+                    <source src="scene9.mp4" type="video/mp4">
+                </video>
+            </div>
+            <div class="overlay"></div>
+            <div class="content">
+                <h2>The Light</h2>
+                <h1>Clarity.</h1>
+                <p>汗水洗刷了焦慮。世界依然在那裡，但你已經不同了。你贏了今天的這一場。</p>
+            </div>
+        </div>
+
+        <div class="page" id="p-final">
+            <div class="content">
+                <svg class="nike-logo" viewBox="0 0 24 24" style="fill:#000; width:80px; margin-bottom:30px;"><path d="M21.573 5.378c-.286-.346-.714-.543-1.164-.543-.16 0-.323.025-.483.076l-15.608 5.056c-.703.228-1.241.76-1.464 1.454-.222.694-.054 1.446.459 2.01l3.353 3.691c.294.323.712.508 1.15.508.136 0 .273-.018.406-.056l14.327-4.102c.725-.208 1.291-.741 1.542-1.455.25-.714.152-1.503-.27-2.139z"/></svg>
+                <h1>Just Do It.</h1>
+                <p>贏回你自己。你的下一個挑戰，現在開始。</p>
+                <button class="cta-btn" onclick="location.reload();">RESTART</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ✨ 升級版 Loading JS 邏輯 ✨
+        let targetProgress = 0;
+        let currentProgress = 0;
+        const progressEl = document.getElementById('progress-num');
+        const ringProgress = document.querySelector('.ring-progress');
+        const loaderEl = document.getElementById('loader');
+
+        // 模擬後台加載（給出隨機目標值）
+        const loadInt = setInterval(() => {
+            targetProgress += Math.random() * 25 + 5;
+            if (targetProgress >= 100) {
+                targetProgress = 100;
+                clearInterval(loadInt);
+            }
+        }, 180);
+
+        // 使用 requestAnimationFrame 實現物理級平滑過渡
+        function animateLoader() {
+            // easing 緩動公式：讓數字與進度條像有阻尼一樣絲滑
+            currentProgress += (targetProgress - currentProgress) * 0.12;
+            
+            // 更新數字
+            progressEl.innerText = Math.floor(currentProgress) + "%";
+            
+            // 更新 SVG 圓環：計算 dashoffset (283 到 0)
+            let offset = 283 - (currentProgress / 100) * 283;
+            ringProgress.style.strokeDashoffset = offset;
+
+            // 判斷是否加載完成
+            if (currentProgress >= 99.5) {
+                progressEl.innerText = "100%";
+                ringProgress.style.strokeDashoffset = 0;
+                
+                // 延遲一點點，讓用戶看清楚 100%，然後觸發電影級退場
+                setTimeout(() => {
+                    loaderEl.classList.add('hide'); 
+                    setTimeout(() => loaderEl.style.display = 'none', 1000);
+                }, 400);
+            } else {
+                requestAnimationFrame(animateLoader);
+            }
+        }
+        animateLoader(); // 啟動動畫
+
+        // --- 以下為原有的滑鼠視差與拖曳邏輯，無更動 ---
+        window.addEventListener('mousemove', (e) => {
+            const xOffset = (window.innerWidth / 2 - e.clientX) * 0.03; 
+            const yOffset = (window.innerHeight / 2 - e.clientY) * 0.03;
+            document.documentElement.style.setProperty('--mx', `${xOffset}px`);
+            document.documentElement.style.setProperty('--my', `${yOffset}px`);
+        });
+
+        const slider = document.getElementById('slider-container');
+        const pages = document.querySelectorAll('.page');
+        const onboardCircle = document.getElementById('onboard-circle');
+        const pageIndexEl = document.getElementById('page-index');
+        
+        let currentIndex = 0;
+        let isDragging = false;
+        let isTransitioning = false; 
+        let startY = 0;
+        let currentDeltaY = 0;
+        const triggerThreshold = 120;
+
+        function getY(e) { return e.type.includes('mouse') ? e.clientY : e.touches[0].clientY; }
+
+        function handleStart(e) {
+            if (isDragging || isTransitioning) return; 
+            if (currentIndex === 0 && e.target !== onboardCircle) return;
+            isDragging = true;
+            startY = getY(e);
+            currentDeltaY = 0;
+            slider.classList.remove('animate');
+            if (currentIndex === 0) onboardCircle.style.transition = 'none';
+        }
+
+        function handleMove(e) {
+            if (!isDragging) return;
+            e.preventDefault(); 
+            currentDeltaY = getY(e) - startY; 
+            if (currentIndex === 0) {
+                if (currentDeltaY < 0) currentDeltaY = 0;
+                let visualY = currentDeltaY > triggerThreshold ? triggerThreshold : currentDeltaY;
+                onboardCircle.style.transform = `translate(-50%, ${visualY}px)`;
+                if (currentDeltaY >= triggerThreshold) {
+                    isDragging = false; 
+                    onboardCircle.style.transform = `translate(-50%, ${triggerThreshold}px)`;
+                    setTimeout(() => {
+                        document.body.classList.add('story-mode');
+                        navigate(1);
+                    }, 200);
+                }
+            } else {
+                if (currentDeltaY >= triggerThreshold) {
+                    isDragging = false; 
+                    navigate(1);
+                } else if (currentDeltaY <= -triggerThreshold) {
+                    isDragging = false; 
+                    navigate(-1);
+                }
+            }
+        }
+
+        function handleEnd() {
+            if (!isDragging) return; 
+            isDragging = false; 
+            slider.classList.add('animate');
+            if (currentIndex === 0) {
+                onboardCircle.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                onboardCircle.style.transform = `translate(-50%, 0px)`;
+            } else {
+                updateSlider(); 
+            }
+        }
+
+        function navigate(direction) {
+            if (isTransitioning) return;
+            let nextIndex = currentIndex + direction;
+            if (nextIndex < 1 || nextIndex > pages.length - 1) {
+                updateSlider(); 
+                return;
+            }
+            isTransitioning = true;
+            const overlay = document.getElementById('falling-overlay');
+            const lines = overlay.querySelector('.speed-lines');
+            slider.style.transform = `translateY(-${currentIndex * 100}vh)`;
+            lines.style.animationDirection = direction > 0 ? 'normal' : 'reverse';
+            overlay.classList.add('active');
+
+            setTimeout(() => {
+                slider.classList.remove('animate');
+                currentIndex = nextIndex;
+                updateSlider(true); 
+
+                const activeVideo = pages[currentIndex].querySelector('video');
+                if (activeVideo) activeVideo.currentTime = 0;
+
+                setTimeout(() => {
+                    overlay.classList.remove('active');
+                    pages.forEach((p, i) => p.classList.toggle('active', i === currentIndex));
+                    slider.classList.add('animate');
+                    isTransitioning = false;
+                }, 1000); 
+            }, 400); 
+        }
+
+        function updateSlider(skipActive = false) {
+            slider.style.transform = `translateY(-${currentIndex * 100}vh)`;
+            if (!skipActive) {
+                pages.forEach((p, i) => p.classList.toggle('active', i === currentIndex));
+            }
+            let displayNum = currentIndex < 10 ? `0${currentIndex}` : currentIndex;
+            pageIndexEl.innerText = `${displayNum} / 10`;
+        }
+
+        window.addEventListener('mousedown', handleStart);
+        window.addEventListener('touchstart', handleStart, {passive: false});
+        window.addEventListener('touchmove', handleMove, {passive: false});
+        window.addEventListener('mousemove', (e) => { if (isDragging) handleMove(e); });
+        window.addEventListener('mouseup', handleEnd);
+        window.addEventListener('touchend', handleEnd);
+    </script>
+</body>
+</html>
